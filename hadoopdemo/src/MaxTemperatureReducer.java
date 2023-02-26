@@ -1,30 +1,38 @@
-
-
 import java.io.IOException;
-import org.apache.hadoop.io.IntWritable;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
-/*
- * @Author: S. Ray for demo
- */
+public class MaxTemperatureReducer extends Reducer<Text, Text, Text, Text> {
 
-public class MaxTemperatureReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+    private static final int MOVIE_COUNT_THRESHOLD = 10;
 
-	@Override
+    @Override
+    public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+        Map<String, Integer> movieCountMap = new HashMap<>();
+        for (Text value : values) {
+            String movieTitle = value.toString();
+            movieCountMap.put(movieTitle, movieCountMap.getOrDefault(movieTitle, 0) + 1);
+        }
 
-	public void reduce(Text key, Iterable<IntWritable> values,  Context context)  throws IOException, InterruptedException {
+        int movieCount = 0;
+        StringBuilder movieListBuilder = new StringBuilder();
+        for (Map.Entry<String, Integer> entry : movieCountMap.entrySet()) {
+            int count = entry.getValue();
+            movieCount += count;
 
-		int maxValue = Integer.MIN_VALUE;
+            if (count > 1) {
+                if (movieListBuilder.length() > 0) {
+                    movieListBuilder.append(", ");
+                }
+                movieListBuilder.append(entry.getKey());
+            }
+        }
 
-		for (IntWritable value : values) {
-
-			maxValue = Math.max(maxValue, value.get());
-
-		}
-
-		context.write(key, new IntWritable(maxValue));
-
-	}
-
+        if (movieCount > MOVIE_COUNT_THRESHOLD) {
+            String outputValue = String.format("%d %s", movieCount, movieListBuilder.toString());
+            context.write(key, new Text(outputValue));
+        }
+    }
 }
