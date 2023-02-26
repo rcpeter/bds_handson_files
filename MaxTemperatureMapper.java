@@ -6,48 +6,29 @@ import org.apache.hadoop.mapreduce.Mapper;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/*
- * @Author: S. Ray for demo
- */
+public class MaxTemperatureMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
 
-public class MaxTemperatureMapper extends Mapper<LongWritable, Text, Text, Text> {
-
+    @Override
     public void map(LongWritable inputKey, Text inputValue, Context context)
             throws IOException, InterruptedException {
 
-        // Convert input record from Text to String
+        // Split the input line into fields
         String inputLine = inputValue.toString();
+        String[] fields = inputLine.split(",");
 
-        // Split the input record using "," as delimiter
-        String[] inputFields = inputLine.split(",");
+        // Extract the movie name from the third field
+        String movieName = fields[2].trim();
 
-        // Extract the movie name from the third field of input record
-        String movieName = inputFields[2].trim();
-
-        // Define a pattern to match a string within quotes
+        // Extract the cast names from the quoted strings in the input line
         Pattern quotedStringPattern = Pattern.compile("\"([^\"]+)\"");
-
-        // Create a matcher object to search for quoted strings in input record
         Matcher quotedStringMatcher = quotedStringPattern.matcher(inputLine);
 
-        // If a quoted string is found in input record
-        if (quotedStringMatcher.find()) {
-
-            // Get the matched string
+        while (quotedStringMatcher.find()) {
             String castString = quotedStringMatcher.group(0);
-
-            // Split the matched string using "," as delimiter
             String[] allCasts = castString.split(",");
-
-            // For each cast member in the matched string
-            for (int i = 0; i < allCasts.length; i++) {
-
-                // Remove the quotes from the cast member name
-                String castName = allCasts[i].replaceAll("\"", "");
-
-                // Emit a key-value pair where the key is the cast member name
-                // and the value is the name of the movie they appeared in
-                context.write(new Text(castName), new Text(movieName));
+            for (String cast : allCasts) {
+                String castName = cast.replaceAll("\"", "").trim();
+                context.write(new Text(castName), new IntWritable(1));
             }
         }
     }
